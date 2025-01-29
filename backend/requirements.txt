@@ -3,4 +3,6 @@ tensorflow
 opencv-python
 numpy
 pillow
-psycopg2
+gunicorn
+flask-cors
+requests
