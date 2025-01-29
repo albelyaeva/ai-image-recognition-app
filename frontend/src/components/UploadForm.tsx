@@ -1,21 +1,41 @@
-import React, { useState } from "react";
+import React, {useEffect, useRef, useState} from "react";
 import axios from "axios";
+import { motion } from "framer-motion";
 
 const UploadForm: React.FC<{ setResults: React.Dispatch<React.SetStateAction<any[]>> }> = ({ setResults }) => {
     const [image, setImage] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
+    const [successMessage, setSuccessMessage] = useState<boolean>(false);
+    const fileInputRef = useRef<HTMLInputElement | null>(null); // Ref for the file input
 
-    // Handle image selection
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            const selectedImage = e.target.files[0];
-            setImage(selectedImage);
-            setPreview(URL.createObjectURL(selectedImage)); // Generate preview URL
+    useEffect(() => {
+        if (!image) {
+            setPreview(null);
+            return;
         }
+
+        const objectUrl = URL.createObjectURL(image);
+        setPreview(objectUrl);
+
+        return () => URL.revokeObjectURL(objectUrl);
+    }, [image]);
+
+    const handleImageChange = (files: FileList | null) => {
+        if (files && files.length > 0) {
+            setImage(files[0]);
+        }
+    };;
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
     };
 
-    // Handle form submission
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        handleImageChange(e.dataTransfer.files);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!image) {
@@ -23,13 +43,14 @@ const UploadForm: React.FC<{ setResults: React.Dispatch<React.SetStateAction<any
             return;
         }
 
-        setLoading(true); // Show loading animation
+        setLoading(true);
+        setSuccessMessage(false);
 
         const formData = new FormData();
         formData.append("image", image);
 
         try {
-            const response = await axios.post("http://127.0.0.1:5000/upload", formData, {
+            const response = await axios.post("${import.meta.env.VITE_API_BASE_URL}", formData, {
                 headers: {
                     "Content-Type": "multipart/form-data",
                 },
@@ -37,11 +58,17 @@ const UploadForm: React.FC<{ setResults: React.Dispatch<React.SetStateAction<any
             });
 
             setResults(response.data);
+            setSuccessMessage(true);
+            setTimeout(() => setSuccessMessage(false), 3000);
+
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
         } catch (error: any) {
             console.error("Error uploading image:", error.response ? error.response.data : error.message);
             alert("Upload failed. Check backend logs.");
         } finally {
-            setLoading(false); // Hide loading animation
+            setLoading(false);
         }
     };
 
@@ -54,37 +81,49 @@ const UploadForm: React.FC<{ setResults: React.Dispatch<React.SetStateAction<any
     }
 
     return (
-        <div className="flex flex-col items-center p-6 bg-gray-100 rounded-lg shadow-md w-full max-w-md">
-            <h2 className="text-xl font-semibold mb-4">Upload an Image</h2>
+        <div
+            className="flex flex-col items-center p-6 rounded-lg shadow-xl w-full max-w-md bg-gradient-to-br from-gray-900 to-purple-800 text-white">
+            <h2 className="text-2xl font-semibold mb-4">Upload an Image</h2>
 
-            <form onSubmit={handleSubmit} className="flex flex-col items-center w-full">
-                {/* Image Upload Input & Mini Preview */}
-                <div className="flex items-center space-x-4 mb-5">
+            <form onSubmit={handleSubmit} className="flex flex-col items-center space-y-4 w-full">
+                <div
+                    className="w-full p-6 border-2 border-dashed border-purple-500 rounded-md bg-gray-800 text-center cursor-pointer hover:bg-gray-700 transition relative"
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                >
+                    <p className="text-gray-300">Drag & Drop an image here, or <span
+                        className="text-purple-400 font-semibold">click to select</span></p>
+
+                    {/* Hidden File Input */}
                     <input
+                        ref={fileInputRef}
                         type="file"
                         accept="image/*"
-                        onChange={handleImageChange}
-                        className="p-2 border rounded-md cursor-pointer bg-white"
+                        onChange={(e) => handleImageChange(e.target.files)}
+                        className="hidden"
                     />
                 </div>
-
                 {preview && (
-                        <img
-                            src={preview}
-                            alt="Mini Preview"
-                            className="img-preview object-cover rounded-md border shadow-sm"
-                        />
+                    <img
+                        src={preview}
+                        alt="Mini Preview"
+                        className="img-preview object-cover rounded-md border border-purple-400 shadow-lg"
+                    />
                 )}
 
                 {loading ? (
                     <div className="flex justify-center items-center space-x-2">
-                        <div className="w-5 h-5 border-4 border-blue-500 border-dotted rounded-full animate-spin"></div>
-                        <span className="text-blue-500 font-semibold">Uploading...</span>
+                        <div
+                            className="w-5 h-5 border-4 border-purple-500 border-dotted rounded-full animate-spin"></div>
+                        <span className="text-purple-400 font-semibold">Uploading...</span>
                     </div>
                 ) : (
                     <button
                         type="submit"
-                        className="upload-btn px-6 py-2 bg-blue-500 text-white font-semibold rounded-md hover:bg-blue-600 transition p-5"
+                        className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-md hover:bg-purple-700
+                         transition shadow-lg disabled:bg-gray-300"
+                        disabled={!image}
                     >
                         Upload
                     </button>
@@ -97,6 +136,18 @@ const UploadForm: React.FC<{ setResults: React.Dispatch<React.SetStateAction<any
                     </button>
                 }
             </form>
+
+            {successMessage && (
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="fixed top-6 right-6 bg-green-600 text-white px-4 py-2 rounded-md shadow-lg"
+                >
+                    ✅ Image uploaded successfully!
+                </motion.div>
+            )}
         </div>
     );
 };
