@@ -6,3 +6,4 @@ pillow
 gunicorn
 flask-cors
 requests
+opencv-python-headless
