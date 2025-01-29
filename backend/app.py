@@ -5,6 +5,12 @@ import cv2
 import numpy as np
 import tensorflow as tf
 
+# Set TensorFlow to use minimal memory
+physical_devices = tf.config.list_physical_devices('CPU')
+if physical_devices:
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
+
 app = Flask(__name__)
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 

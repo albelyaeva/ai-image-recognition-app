@@ -50,7 +50,7 @@ const UploadForm: React.FC<{ setResults: React.Dispatch<React.SetStateAction<any
         formData.append("image", image);
 
         try {
-            const response = await axios.post("${import.meta.env.VITE_API_BASE_URL}", formData, {
+            const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/upload`, formData, {
                 headers: {
                     "Content-Type": "multipart/form-data",
                 },
