@@ -8,16 +8,20 @@ import tensorflow as tf
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+# Limit TensorFlow CPU threads to prevent memory spikes
+tf.config.threading.set_intra_op_parallelism_threads(1)
+tf.config.threading.set_inter_op_parallelism_threads(1)
 
+print("✅ TensorFlow running on CPU with memory optimization.")
+
+# Only set memory growth if GPU is available
 physical_devices = tf.config.list_physical_devices('GPU')
 if physical_devices:
     try:
         tf.config.set_logical_device_configuration(
-            physical_devices[0], [tf.config.LogicalDeviceConfiguration(memory_limit=1024)]
+            physical_devices[0], [tf.config.LogicalDeviceConfiguration(memory_limit=512)]
         )
-        print("GPU detected. Memory limit set to 1024MB.")
+        print("GPU detected. Memory limit set to 512MB.")
     except Exception as e:
         print(f"Warning: Could not configure GPU memory: {e}")
 else:
@@ -25,12 +29,13 @@ else:
 
 
 app = Flask(__name__)
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+FRONTEND_URLS = os.getenv("FRONTEND_URL", "http://localhost:5173", "http://127.0.0.1:5173").split(",")
 
-CORS(app, resources={r"/*": {"origins": [FRONTEND_URL]}}, supports_credentials=True)
+CORS(app, resources={r"/*": {"origins": [FRONTEND_URLS]}}, supports_credentials=True)
 
-# Load AI model
-model = tf.keras.applications.MobileNetV2(weights="imagenet")
+
+model = tf.keras.models.load_model("my_model.h5", compile=False)
+model.compile(optimizer="adam", loss="categorical_crossentropy")
 
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
