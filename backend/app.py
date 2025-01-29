@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 import cv2
@@ -14,36 +14,30 @@ tf.config.threading.set_inter_op_parallelism_threads(1)
 
 print("✅ TensorFlow running on CPU with memory optimization.")
 
-# Only set memory growth if GPU is available
+# Check if a GPU is available
 physical_devices = tf.config.list_physical_devices('GPU')
 if physical_devices:
     try:
         tf.config.set_logical_device_configuration(
             physical_devices[0], [tf.config.LogicalDeviceConfiguration(memory_limit=512)]
         )
-        print("GPU detected. Memory limit set to 512MB.")
+        print("✅ GPU detected. Memory limit set to 512MB.")
     except Exception as e:
-        print(f"Warning: Could not configure GPU memory: {e}")
+        print(f"⚠️ Warning: Could not configure GPU memory: {e}")
 else:
-    print("No GPU found. Running TensorFlow on CPU.")
-
+    print("❌ No GPU found. Running TensorFlow on CPU.")
 
 app = Flask(__name__)
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173,http://127.0.0.1:5173").split(",")
 
+# Allow frontend connections from multiple origins
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173,http://127.0.0.1:5173").split(",")
 CORS(app, resources={r"/*": {"origins": FRONTEND_URL}}, supports_credentials=True)
 
-
-model = tf.keras.models.load_model("my_model.h5", compile=False)
-model.compile(optimizer="adam", loss="categorical_crossentropy")
+# Load pre-trained MobileNetV2 model
+model = tf.keras.applications.MobileNetV2(weights="imagenet")
 
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-@app.before_request
-def basic_authentication():
-    if request.method.lower() == 'options':
-        return Response()
 
 @app.route("/upload", methods=["POST", "OPTIONS"])
 def upload_image():
@@ -59,6 +53,7 @@ def upload_image():
 
     # Preprocess image
     image = cv2.imread(file_path)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  # Fix: Convert to RGB
     image = cv2.resize(image, (224, 224))
     image = np.expand_dims(image, axis=0) / 255.0
 
