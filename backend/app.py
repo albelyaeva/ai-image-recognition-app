@@ -29,9 +29,9 @@ else:
 
 
 app = Flask(__name__)
-FRONTEND_URLS = os.getenv("FRONTEND_URL", "http://localhost:5173", "http://127.0.0.1:5173").split(",")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173,http://127.0.0.1:5173").split(",")
 
-CORS(app, resources={r"/*": {"origins": [FRONTEND_URLS]}}, supports_credentials=True)
+CORS(app, resources={r"/*": {"origins": FRONTEND_URL}}, supports_credentials=True)
 
 
 model = tf.keras.models.load_model("my_model.h5", compile=False)
