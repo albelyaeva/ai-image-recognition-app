@@ -5,10 +5,23 @@ import cv2
 import numpy as np
 import tensorflow as tf
 
-# Set TensorFlow to use minimal memory
-physical_devices = tf.config.list_physical_devices('CPU')
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
+physical_devices = tf.config.list_physical_devices('GPU')
 if physical_devices:
-    tf.config.experimental.set_memory_growth(physical_devices[0], True)
+    try:
+        tf.config.set_logical_device_configuration(
+            physical_devices[0], [tf.config.LogicalDeviceConfiguration(memory_limit=1024)]
+        )
+        print("GPU detected. Memory limit set to 1024MB.")
+    except Exception as e:
+        print(f"Warning: Could not configure GPU memory: {e}")
+else:
+    print("No GPU found. Running TensorFlow on CPU.")
 
 
 app = Flask(__name__)
