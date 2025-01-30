@@ -30,9 +30,6 @@ const App: React.FC = () => {
 
             {isModalOpen && <BusinessModal onClose={() => setIsModalOpen(false)}/>}
 
-            <footer className="mt-10 text-sm text-gray-400">
-                Built with ❤️ by albeliaeva
-            </footer>
         </div>
     );
 };
