@@ -31,7 +31,7 @@ app = Flask(__name__)
 
 # Allow frontend connections from multiple origins
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173,http://127.0.0.1:5173").split(",")
-CORS(app, resources={r"/*": {"origins": FRONTEND_URL}}, supports_credentials=True)
+CORS(app, resources={r"/*": {"origins": FRONTEND_URL, "allow_headers": ["Content-Type", "Authorization"], "methods": ["GET", "POST", "OPTIONS"]}}, supports_credentials=True)
 
 # Load pre-trained MobileNetV2 model
 model = tf.keras.applications.MobileNetV2(weights="imagenet")
