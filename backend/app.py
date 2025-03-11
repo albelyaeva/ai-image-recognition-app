@@ -4,6 +4,8 @@ import os
 import cv2
 import numpy as np
 import tensorflow as tf
+import io
+from PIL import Image
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -31,13 +33,15 @@ app = Flask(__name__)
 
 # Allow frontend connections from multiple origins
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173,http://127.0.0.1:5173").split(",")
-CORS(app, resources={r"/*": {"origins": FRONTEND_URL, "allow_headers": ["Content-Type", "Authorization"], "methods": ["GET", "POST", "OPTIONS"]}}, supports_credentials=True)
+CORS(app, resources={r"/*": {"origins": FRONTEND_URL, "allow_headers": ["Content-Type", "Authorization"],
+                             "methods": ["GET", "POST", "OPTIONS"]}}, supports_credentials=True)
 
 # Load pre-trained MobileNetV2 model
 model = tf.keras.applications.MobileNetV2(weights="imagenet")
 
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 
 @app.route("/upload", methods=["POST", "OPTIONS"])
 def upload_image():
@@ -48,22 +52,20 @@ def upload_image():
         return jsonify({"error": "No image file provided"}), 400
 
     file = request.files["image"]
-    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-    file.save(file_path)
+    image = Image.open(io.BytesIO(file.read()))  # Process in memory
+    image = image.convert("RGB")  # Ensure it's in RGB format
+    image = image.resize((224, 224))
 
-    # Preprocess image
-    image = cv2.imread(file_path)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  # Fix: Convert to RGB
-    image = cv2.resize(image, (224, 224))
-    image = np.expand_dims(image, axis=0) / 255.0
+    image_array = np.array(image) / 255.0
+    image_array = np.expand_dims(image_array, axis=0)
 
     # AI Model Prediction
-    predictions = model.predict(image)
+    predictions = model.predict(image_array)
     decoded_predictions = tf.keras.applications.mobilenet_v2.decode_predictions(predictions, top=3)[0]
 
     results = [{"object": pred[1], "confidence": float(pred[2])} for pred in decoded_predictions]
 
-    return jsonify(results), 200  # Ensure response status is 200
+    return jsonify(results), 200
 
 if __name__ == "__main__":
     app.run(debug=True)
